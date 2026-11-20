@@ -23,6 +23,7 @@
     "postinstall": "quasar prepare --silent"
   },
   "dependencies": {
+    "@owlbear-rodeo/sdk": "^3.1.0",
     "@quasar/extras": "^2.1.0",
     "pinia": "^4.0.2",
     "quasar": "^2.35.5",

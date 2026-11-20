@@ -11,7 +11,7 @@ export default defineConfig(ctx => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ["i18n"],
+    boot: ["i18n", "obr"],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ["app.scss"],
@@ -57,6 +57,13 @@ export default defineConfig(ctx => {
 
       // extendViteConf (viteConf) {},
       // viteVuePluginOptions: {},
+      extendViteConf(viteConf) {
+        viteConf.server = {
+          cors: {
+            origin: ["https://owlbear.rodeo", "https://www.owlbear.rodeo"]
+          }
+        };
+      },
 
       // to write components with JSX/TSX:
       // https://v2.quasar.dev/quasar-cli-vite/handling-vite#jsx-tsx
@@ -86,7 +93,8 @@ export default defineConfig(ctx => {
     devServer: {
       // vueDevtools: true,
       // https: true,
-      open: true // opens browser window automatically
+      open: false, // opens browser window automatically
+      port: 5173
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
@@ -104,7 +112,7 @@ export default defineConfig(ctx => {
       // directives: [],
 
       // Quasar plugins
-      plugins: []
+      plugins: ["Notify"]
     },
 
     // animations: 'all', // --- includes all animations
