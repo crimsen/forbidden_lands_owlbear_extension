@@ -71,7 +71,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { Notify } from "quasar";
-import { rollWithDicePlus } from "@/services/dicePlus";
+import { rollTargetOf, rollWithDicePlus } from "@/services/dicePlus";
 import { obrDetail, obrState, type ObrState } from "@/services/obr";
 import {
   connectBridge,
@@ -137,7 +137,10 @@ const handleBridgeMessage = async (message: BridgeMessage) => {
   if (message.type !== "roll" || !id) return;
   const notation = String(message.notation ?? "");
   try {
-    const result = await rollWithDicePlus(notation);
+    const result = await rollWithDicePlus(
+      notation,
+      rollTargetOf(message.target)
+    );
     last.value = JSON.stringify(result, null, 2);
     connection?.send({ v: 1, type: "roll-result", id, notation, result });
   } catch (error) {

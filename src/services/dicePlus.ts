@@ -14,6 +14,17 @@ const ERROR = `${SOURCE}/roll-error`;
 
 type Payload = Record<string, unknown>;
 
+/** Wer den Wurf sehen darf (Dice+-Rolltarget). */
+export type RollTarget = "everyone" | "self" | "dm" | "gm_only";
+
+const ROLL_TARGETS: RollTarget[] = ["everyone", "self", "dm", "gm_only"];
+
+/** Ziel aus einer Bridge-Nachricht; Unbekanntes fällt auf "everyone" zurück. */
+export const rollTargetOf = (value: unknown): RollTarget =>
+  typeof value === "string" && ROLL_TARGETS.includes(value as RollTarget)
+    ? (value as RollTarget)
+    : "everyone";
+
 function checkDicePlusReady(timeout = 1000): Promise<boolean> {
   const requestId = crypto.randomUUID();
   return new Promise(resolve => {
@@ -71,6 +82,7 @@ function validateNotation(
 /** Schickt einen Würfelauftrag und liefert das Ergebnis von Dice+ zurück. */
 export async function rollWithDicePlus(
   notation: string,
+  target: RollTarget = "everyone",
   timeout = 20_000
 ): Promise<Payload> {
   if (!OBR.isAvailable)
@@ -122,7 +134,7 @@ export async function rollWithDicePlus(
         rollId,
         playerId,
         playerName,
-        rollTarget: "everyone",
+        rollTarget: target,
         diceNotation: notation,
         showResults: true,
         timestamp: Date.now(),
