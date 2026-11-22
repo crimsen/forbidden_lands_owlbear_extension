@@ -13,3 +13,7 @@
  * }
  */
 interface ImportMetaEnv {}
+
+interface Window {
+  __obrHandshake?: { data: unknown; origin: string; at: number };
+}

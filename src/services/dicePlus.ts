@@ -1,4 +1,5 @@
 import OBR from "@owlbear-rodeo/sdk";
+import { waitForObrReady } from "@/services/obr";
 
 /**
  * Würfeln über Dice+ (Broadcast-API der Dice+-Extension). Der Ablauf entspricht
@@ -12,17 +13,6 @@ const RESULT = `${SOURCE}/roll-result`;
 const ERROR = `${SOURCE}/roll-error`;
 
 type Payload = Record<string, unknown>;
-
-function whenObrReady(timeout = 5000): Promise<boolean> {
-  if (OBR.isReady) return Promise.resolve(true);
-  return new Promise(resolve => {
-    const timer = setTimeout(() => resolve(false), timeout);
-    OBR.onReady(() => {
-      clearTimeout(timer);
-      resolve(true);
-    });
-  });
-}
 
 function checkDicePlusReady(timeout = 1000): Promise<boolean> {
   const requestId = crypto.randomUUID();
@@ -85,7 +75,7 @@ export async function rollWithDicePlus(
 ): Promise<Payload> {
   if (!OBR.isAvailable)
     throw new Error("Nur innerhalb von Owlbear Rodeo verfügbar.");
-  if (!(await whenObrReady()))
+  if (!(await waitForObrReady()))
     throw new Error("Owlbear Rodeo ist nicht bereit.");
   if (!(await checkDicePlusReady()))
     throw new Error("Dice+ ist nicht verfügbar.");
