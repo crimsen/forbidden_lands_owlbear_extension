@@ -101,8 +101,7 @@ export default defineConfig(ctx => {
     framework: {
       config: {},
       iconSet: "mdi-v7",
-
-      // lang: 'en-US', // Quasar language pack
+      lang: "de-DE",
 
       // For special cases outside of where the auto-import strategy can have an impact
       // (like functional components as one of the examples),

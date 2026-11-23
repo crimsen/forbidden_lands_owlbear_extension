@@ -1,6 +1,11 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { CharacterView, Ruleset } from "@/model/types";
+import type {
+  CharacterView,
+  RollEvaluation,
+  RollParams,
+  Ruleset
+} from "@/model/types";
 import type { RollTarget } from "@/services/dicePlus";
 import {
   checkDicePlusReady,
@@ -30,6 +35,12 @@ export const useBridgeStore = defineStore("bridge", () => {
   const dicePlusReady = ref(false);
   const pairingCode = ref(localStorage.getItem(PAIRING_KEY) ?? "");
   const rollTarget = ref<RollTarget>("everyone");
+
+  /** Zustand des laufenden, von der App ausgewerteten Wurfs. */
+  const evaluation = ref<RollEvaluation | null>(null);
+  const rollPending = ref(false);
+  const rollError = ref("");
+  let evaluationRequestId = "";
 
   let connection: BridgeConnection | null = null;
 
@@ -69,6 +80,18 @@ export const useBridgeStore = defineStore("bridge", () => {
       case "roll":
         void handleRoll(message);
         break;
+      case "roll-evaluation":
+        if (message.requestId !== evaluationRequestId) break;
+        rollPending.value = false;
+        if (typeof message.error === "string" && message.error) {
+          rollError.value = message.error;
+          evaluation.value = null;
+        } else {
+          rollError.value = "";
+          evaluation.value = (message.evaluation ??
+            null) as RollEvaluation | null;
+        }
+        break;
       default:
         break;
     }
@@ -104,6 +127,37 @@ export const useBridgeStore = defineStore("bridge", () => {
     connect();
   };
 
+  /** Startet einen Wurf: die App baut die Notation und wertet aus. */
+  const requestRoll = (
+    requestId: string,
+    kind: string,
+    params: RollParams,
+    target: RollTarget = rollTarget.value
+  ) => {
+    evaluationRequestId = requestId;
+    evaluation.value = null;
+    rollError.value = "";
+    rollPending.value = true;
+    send({ type: "roll-request", requestId, kind, params, target });
+  };
+
+  /** „Strapazieren“: die App verrechnet die 1en und würfelt erneut. */
+  const pushRoll = (requestId: string) => {
+    evaluationRequestId = requestId;
+    evaluation.value = null;
+    rollError.value = "";
+    rollPending.value = true;
+    send({ type: "roll-push", requestId });
+  };
+
+  /** Setzt den Wurf-Zustand zurück (beim Öffnen des Dialogs). */
+  const resetRoll = () => {
+    evaluationRequestId = "";
+    evaluation.value = null;
+    rollError.value = "";
+    rollPending.value = false;
+  };
+
   const init = () => {
     connect();
     void refreshDicePlus();
@@ -114,9 +168,15 @@ export const useBridgeStore = defineStore("bridge", () => {
     dicePlusReady,
     pairingCode,
     rollTarget,
+    evaluation,
+    rollPending,
+    rollError,
     init,
     send,
     setPairingCode,
-    refreshDicePlus
+    refreshDicePlus,
+    requestRoll,
+    pushRoll,
+    resetRoll
   };
 });

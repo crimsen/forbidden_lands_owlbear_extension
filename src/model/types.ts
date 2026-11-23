@@ -191,14 +191,77 @@ export type RollGroup =
   | "consumable"
   | "event";
 
+/** Ein Artefaktwürfel-Typ mit Anzahl im Wurf-Dialog. */
+export interface ArtifactParam {
+  sides: number;
+  dice: number;
+}
+
+/** Parameter eines Wurfs; die Extension passt sie an und schickt sie zurück. */
+export type RollParams =
+  | {
+      kind: "check";
+      label: string;
+      attribute: string;
+      attributeDice: number;
+      skill?: string;
+      skillDice?: number;
+      weapon?: string;
+      weaponDice?: number;
+      artifacts: ArtifactParam[];
+    }
+  | { kind: "armor"; armorIds: string[]; damage?: number }
+  | { kind: "consumable"; refId: string }
+  | { kind: "event" };
+
 export interface RollButton {
   id: string;
   group: RollGroup;
   label: string;
   notation: string;
-  apply?: "consumable";
-  refId?: string;
+  params: RollParams;
 }
+
+/** Auswertung einer Probe (von der App). */
+export interface CheckEvaluation {
+  kind: "check";
+  label: string;
+  successes: number;
+  failures: number;
+  groups: { description?: string; dice: { value: number }[]; total: number }[];
+  canPush: boolean;
+  pushLabel: string;
+  pushCount: number;
+}
+
+export interface ArmorEvaluation {
+  kind: "armor";
+  label: string;
+  absorbed: number;
+  damage: number;
+  degraded: { id: string; amount: number }[];
+  destroyed: string[];
+}
+
+export interface ConsumableEvaluation {
+  kind: "consumable";
+  refId: string;
+  dieBefore: ResourceDie | null;
+  dieAfter: ResourceDie | null;
+  value: number;
+}
+
+export interface EventEvaluation {
+  kind: "event";
+  label: string;
+  value: number;
+}
+
+export type RollEvaluation =
+  | CheckEvaluation
+  | ArmorEvaluation
+  | ConsumableEvaluation
+  | EventEvaluation;
 
 export interface CharacterView {
   state: CharacterState;

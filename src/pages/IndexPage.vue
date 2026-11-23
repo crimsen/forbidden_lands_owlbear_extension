@@ -74,9 +74,10 @@
       indicator-color="primary"
     >
       <q-tab name="values" label="Werte" />
-      <q-tab name="skills" label="Talente" />
+      <q-tab name="skills" label="Fertigkeiten" />
+      <q-tab name="talents" label="Talente" />
       <q-tab name="gear" label="Ausrüstung" />
-      <q-tab name="notes" label="Mehr" />
+      <q-tab name="more" label="Mehr" />
     </q-tabs>
 
     <q-separator />
@@ -92,16 +93,20 @@
       </q-tab-panel>
       <q-tab-panel name="skills" class="q-pa-none">
         <SkillsPanel />
+      </q-tab-panel>
+      <q-tab-panel name="talents" class="q-pa-none">
         <TalentsPanel />
       </q-tab-panel>
       <q-tab-panel name="gear" class="q-pa-none">
         <GearPanel />
       </q-tab-panel>
-      <q-tab-panel name="notes" class="q-pa-none">
+      <q-tab-panel name="more" class="q-pa-none">
         <MountsPanel />
         <NotesPanel />
       </q-tab-panel>
     </q-tab-panels>
+
+    <RollDialog />
   </q-page>
 </template>
 
@@ -111,6 +116,7 @@ import DiceRoll from "@/components/DiceRoll.vue";
 import GearPanel from "@/components/GearPanel.vue";
 import MountsPanel from "@/components/MountsPanel.vue";
 import NotesPanel from "@/components/NotesPanel.vue";
+import RollDialog from "@/components/RollDialog.vue";
 import SkillsPanel from "@/components/SkillsPanel.vue";
 import TalentsPanel from "@/components/TalentsPanel.vue";
 import ValuesPanel from "@/components/ValuesPanel.vue";
