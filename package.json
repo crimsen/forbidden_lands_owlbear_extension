@@ -13,6 +13,7 @@
     "vuejs"
   ],
   "author": "Tim Gröger <tim@groeger-clan.de>",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "lint": "oxfmt && oxlint --fix",
