@@ -25,7 +25,8 @@ export const rollTargetOf = (value: unknown): RollTarget =>
     ? (value as RollTarget)
     : "everyone";
 
-function checkDicePlusReady(timeout = 1000): Promise<boolean> {
+/** Prüft, ob Dice+ im Raum verfügbar ist (für die Statusanzeige). */
+export function checkDicePlusReady(timeout = 1000): Promise<boolean> {
   const requestId = crypto.randomUUID();
   return new Promise(resolve => {
     const timer = setTimeout(() => {

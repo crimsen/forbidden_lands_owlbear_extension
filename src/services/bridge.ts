@@ -16,14 +16,16 @@ export interface BridgeConnection {
   close: () => void;
 }
 
-// shortcut: fester Port und Token für den Testlauf; ein Kopplungscode ersetzt
-// den Token, sobald die Bridge über den Test hinaus verwendet wird.
+// Der Kopplungscode kommt aus der Oberfläche (nicht aus dem Quellcode), damit
+// eine fremd gehostete Extension den lokalen Server nicht übernehmen kann.
 const BRIDGE_URL = "ws://localhost:47823";
-const BRIDGE_TOKEN = "forbidden-lands-bridge";
 const RETRY_MS = 3000;
 
-/** Verbindet, meldet Status und verbindet nach Abbruch neu. */
-export const connectBridge = (handlers: BridgeHandlers): BridgeConnection => {
+/** Verbindet mit dem Kopplungscode, meldet Status und verbindet neu. */
+export const connectBridge = (
+  token: string,
+  handlers: BridgeHandlers
+): BridgeConnection => {
   let socket: WebSocket | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
@@ -32,8 +34,7 @@ export const connectBridge = (handlers: BridgeHandlers): BridgeConnection => {
     if (closed) return;
     const ws = new WebSocket(BRIDGE_URL);
     socket = ws;
-    ws.onopen = () =>
-      ws.send(JSON.stringify({ v: 1, type: "hello", token: BRIDGE_TOKEN }));
+    ws.onopen = () => ws.send(JSON.stringify({ v: 1, type: "hello", token }));
     ws.onmessage = event => {
       const message = JSON.parse(String(event.data)) as BridgeMessage;
       if (message.type === "ready") handlers.onStatus(true);
