@@ -8,6 +8,14 @@
             {{ character.state?.name || "Kein Charakter geöffnet" }}
           </div>
         </div>
+        <q-btn
+          flat
+          dense
+          round
+          :icon="ui.editing ? 'mdi-check' : 'mdi-pencil'"
+          :aria-label="ui.editing ? 'Fertig' : 'Bearbeiten'"
+          @click="ui.toggleEditing()"
+        />
         <DiceRoll v-if="freeRoll" :roll="freeRoll" />
         <DiceRoll v-if="eventRoll" :roll="eventRoll" />
       </div>
@@ -123,9 +131,11 @@ import TalentsPanel from "@/components/TalentsPanel.vue";
 import ValuesPanel from "@/components/ValuesPanel.vue";
 import { useBridgeStore } from "@/stores/bridge";
 import { useCharacterStore } from "@/stores/character";
+import { useUiStore } from "@/stores/ui";
 
 const bridge = useBridgeStore();
 const character = useCharacterStore();
+const ui = useUiStore();
 
 const tab = ref("values");
 const pairingInput = ref(bridge.pairingCode);
