@@ -1,43 +1,50 @@
 <template>
   <div v-if="state && derived" class="q-pa-sm">
+    <LoadBar />
+
     <div class="text-subtitle2">Attribute</div>
     <div
-      v-for="(attr, name) in state.attributes"
+      v-for="name in attributeNames"
       :key="name"
       class="row items-center no-wrap q-py-xs"
     >
-      <div class="col">
-        <div class="text-body2">{{ name }}</div>
-        <div class="text-caption text-grey-6">
-          Wert {{ attr.value }} · Schaden {{ attr.health }}
-        </div>
+      <div class="col text-body2">{{ name }}</div>
+      <div class="col-auto row items-center no-wrap">
+        <q-btn
+          v-if="ui.editing"
+          flat
+          dense
+          round
+          size="sm"
+          icon="mdi-minus"
+          :disable="(state.attributes[name]?.value ?? 0) <= 1"
+          @click="changeValue(name, -1)"
+        />
+        <q-checkbox
+          v-for="star in state.attributes[name]?.value ?? 0"
+          :key="star"
+          :model-value="star <= (state.attributes[name]?.health ?? 0)"
+          :color="
+            star <= (state.attributes[name]?.health ?? 0) ? 'primary' : 'grey-5'
+          "
+          checked-icon="mdi-star-circle"
+          unchecked-icon="mdi-star-circle-outline"
+          @click="setHealth(name, star)"
+        />
+        <q-btn
+          v-if="ui.editing"
+          flat
+          dense
+          round
+          size="sm"
+          icon="mdi-plus"
+          @click="changeValue(name, 1)"
+        />
       </div>
       <DiceRoll
         v-if="rollById[`attribute:${name}`]"
         :roll="rollById[`attribute:${name}`]!"
       />
-      <q-btn
-        dense
-        flat
-        round
-        size="sm"
-        icon="mdi-minus"
-        :disable="attr.health <= 0"
-        @click="damage(name, -1)"
-      >
-        <q-tooltip>Heilen</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        flat
-        round
-        size="sm"
-        icon="mdi-plus"
-        :disable="attr.health >= attr.value"
-        @click="damage(name, 1)"
-      >
-        <q-tooltip>Schaden</q-tooltip>
-      </q-btn>
     </div>
 
     <div class="text-subtitle2 q-mt-md">Ressourcen</div>
@@ -97,25 +104,29 @@
         <q-tooltip class="text-body2">{{ entry.rule }}</q-tooltip>
       </q-chip>
     </div>
-
-    <div class="text-caption text-grey-6 q-mt-md">
-      Traglast {{ derived.currentLoad }} / {{ derived.capacity }}
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import DiceRoll from "@/components/DiceRoll.vue";
+import LoadBar from "@/components/LoadBar.vue";
 import type { RollButton } from "@/model/types";
 import { useCatalogStore } from "@/stores/catalog";
 import { useCharacterStore } from "@/stores/character";
+import { useUiStore } from "@/stores/ui";
 
 const catalog = useCatalogStore();
 const character = useCharacterStore();
+const ui = useUiStore();
 
 const state = computed(() => character.state);
 const derived = computed(() => character.derived);
+
+const attributeNames = computed(
+  () =>
+    catalog.ruleset?.attributes ?? Object.keys(state.value?.attributes ?? {})
+);
 
 const rollById = computed(() => {
   const map: Record<string, RollButton | undefined> = {};
@@ -141,8 +152,23 @@ const moneyFields = [
   { field: "copper", label: "Kupfer" }
 ] as const;
 
-const damage = (attribute: string, delta: number) =>
-  character.sendAction("attribute.health", { attribute, delta });
+// Wie die App: Klick auf einen Stern setzt den Schaden.
+const setHealth = (attribute: string, star: number) => {
+  const health = state.value?.attributes[attribute]?.health ?? 0;
+  character.sendAction("attribute.setHealth", {
+    attribute,
+    health: star > health ? star : star - 1
+  });
+};
+
+const changeValue = (attribute: string, delta: number) => {
+  const value = state.value?.attributes[attribute]?.value ?? 0;
+  character.sendAction("attribute.setValue", {
+    attribute,
+    value: value + delta
+  });
+};
+
 const resource = (field: string, delta: number) =>
   character.sendAction("resource", { field, delta });
 const setMoney = (field: string, value: number) =>

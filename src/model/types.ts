@@ -265,6 +265,7 @@ export interface ArmorEvaluation {
   damage: number;
   degradation: DegradationRow[];
   destroyed: string[];
+  groups: CheckGroup[];
 }
 
 export interface ConsumableEvaluation {
@@ -302,6 +303,8 @@ export interface CharacterView {
     weaponOptions: { id: string; name: string; label: string; dice: number }[];
     /** Talente des Charakters, die Artefaktwürfel gewähren. */
     talentOptions: { name: string; label: string; die: number }[];
+    /** Bonus der Traglast durch das Talent Packesel. */
+    packeselBonus: number;
   };
   rolls: RollButton[];
 }
