@@ -26,6 +26,6 @@ const dialog = useRollDialogStore();
 const tooltip = computed(() => {
   if (!bridge.connected) return "App nicht verbunden";
   if (!bridge.dicePlusReady) return "Dice+ ist nicht verfügbar";
-  return props.roll.notation;
+  return props.roll.notation || props.roll.label;
 });
 </script>

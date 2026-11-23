@@ -189,7 +189,8 @@ export type RollGroup =
   | "weapon"
   | "armor"
   | "consumable"
-  | "event";
+  | "event"
+  | "free";
 
 /** Ein Artefaktwürfel-Typ mit Anzahl im Wurf-Dialog. */
 export interface ArtifactParam {
@@ -209,6 +210,8 @@ export type RollParams =
       weapon?: string;
       weaponDice?: number;
       artifacts: ArtifactParam[];
+      /** Freier Wurf: alle Zähler frei, beliebig oft würfelbar. */
+      free?: boolean;
     }
   | { kind: "armor"; armorIds: string[]; damage?: number }
   | { kind: "consumable"; refId: string }
@@ -222,13 +225,21 @@ export interface RollButton {
   params: RollParams;
 }
 
+/** Eine Würfelgruppe, wie die App sie auswertet. */
+export interface CheckGroup {
+  description: string;
+  dice: number[];
+  successes: number;
+  artifact: boolean;
+}
+
 /** Auswertung einer Probe (von der App). */
 export interface CheckEvaluation {
   kind: "check";
   label: string;
   successes: number;
   failures: number;
-  groups: { description?: string; dice: { value: number }[]; total: number }[];
+  groups: CheckGroup[];
   canPush: boolean;
   pushLabel: string;
   pushCount: number;
@@ -273,6 +284,10 @@ export interface CharacterView {
     kinTalent: string | null;
     castableSpells: string[];
     learnableTalents: string[];
+    /** Waffen des Charakters für die Waffenauswahl im Wurf-Dialog. */
+    weaponOptions: { id: string; name: string; label: string; dice: number }[];
+    /** Talente des Charakters, die Artefaktwürfel gewähren. */
+    talentOptions: { name: string; label: string; die: number }[];
   };
   rolls: RollButton[];
 }
