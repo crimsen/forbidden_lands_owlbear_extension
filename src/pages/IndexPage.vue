@@ -8,6 +8,7 @@
             {{ character.state?.name || "Kein Charakter geöffnet" }}
           </div>
         </div>
+        <DiceRoll v-if="freeRoll" :roll="freeRoll" />
         <DiceRoll v-if="eventRoll" :roll="eventRoll" />
       </div>
       <div class="row items-center q-gutter-xs q-mt-xs">
@@ -138,6 +139,10 @@ const rollTargets = [
 
 const eventRoll = computed(() =>
   character.rolls.find(roll => roll.group === "event")
+);
+
+const freeRoll = computed(() =>
+  character.rolls.find(roll => roll.group === "free")
 );
 
 const pair = () => bridge.setPairingCode(pairingInput.value);
