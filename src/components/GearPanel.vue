@@ -2,7 +2,16 @@
   <div v-if="state" class="q-pa-sm">
     <LoadBar />
 
-    <div class="text-subtitle2">Waffen</div>
+    <div class="row items-center no-wrap">
+      <div class="col text-subtitle2">Waffen</div>
+      <q-btn
+        dense
+        flat
+        icon="mdi-plus"
+        label="Waffe hinzufügen"
+        @click="openWeapon()"
+      />
+    </div>
     <div
       v-for="entry in equippedWeapons"
       :key="entry.id"
@@ -18,6 +27,16 @@
         v-if="rollById[`weapon:${entry.id}`]"
         :roll="rollById[`weapon:${entry.id}`]!"
       />
+      <q-btn
+        dense
+        flat
+        round
+        size="sm"
+        icon="mdi-pencil"
+        @click="openWeapon(entry)"
+      >
+        <q-tooltip>Bearbeiten</q-tooltip>
+      </q-btn>
       <q-btn
         dense
         flat
@@ -41,16 +60,6 @@
     <div v-if="!equippedWeapons.length" class="text-caption text-grey-6">
       Keine Waffe ausgerüstet.
     </div>
-    <q-select
-      :model-value="null"
-      :options="weaponOptions"
-      dense
-      outlined
-      emit-value
-      map-options
-      label="Waffe hinzufügen"
-      @update:model-value="addWeapon"
-    />
 
     <div class="row items-center no-wrap q-mt-md">
       <div class="col text-subtitle2">Rüstung</div>
@@ -59,18 +68,12 @@
     <div v-for="part in parts" :key="part" class="q-mb-sm">
       <div class="row items-center no-wrap">
         <div class="col text-caption text-grey-6">{{ partLabel(part) }}</div>
-        <q-select
-          class="col-auto"
-          style="min-width: 160px"
-          :model-value="null"
-          :options="armorOptionsFor(part)"
+        <q-btn
           dense
-          outlined
-          emit-value
-          map-options
-          options-dense
+          flat
+          icon="mdi-plus"
           :label="`${partLabel(part)} wählen`"
-          @update:model-value="name => equipArmor(part, name)"
+          @click="openArmor(part)"
         />
       </div>
       <div v-if="armorForPart(part)" class="row items-center no-wrap">
@@ -79,6 +82,16 @@
             armorForPart(part)?.data.rating
           }})
         </div>
+        <q-btn
+          dense
+          flat
+          round
+          size="sm"
+          icon="mdi-pencil"
+          @click="openArmor(part, armorForPart(part)!)"
+        >
+          <q-tooltip>Bearbeiten</q-tooltip>
+        </q-btn>
         <q-btn
           dense
           flat
@@ -101,7 +114,16 @@
       </div>
     </div>
 
-    <div class="text-subtitle2 q-mt-md">Inventar</div>
+    <div class="row items-center no-wrap q-mt-md">
+      <div class="col text-subtitle2">Inventar</div>
+      <q-btn
+        dense
+        flat
+        icon="mdi-plus"
+        label="Gegenstand hinzufügen"
+        @click="openItem()"
+      />
+    </div>
     <div
       v-for="row in inventory"
       :key="row.id"
@@ -123,6 +145,17 @@
         @update:model-value="value => setCarrier(row.id, value)"
       />
       <q-btn
+        v-if="row.item"
+        dense
+        flat
+        round
+        size="sm"
+        icon="mdi-pencil"
+        @click="openItem({ id: row.id, data: row.item! })"
+      >
+        <q-tooltip>Bearbeiten</q-tooltip>
+      </q-btn>
+      <q-btn
         v-if="row.canEquip"
         dense
         flat
@@ -143,16 +176,6 @@
         @click="remove(row.id)"
       />
     </div>
-    <q-select
-      :model-value="null"
-      :options="itemOptions"
-      dense
-      outlined
-      emit-value
-      map-options
-      label="Gegenstand hinzufügen"
-      @update:model-value="addItem"
-    />
 
     <div class="text-subtitle2 q-mt-md">Verbrauchsgüter</div>
     <div
@@ -187,26 +210,55 @@
         @click="addUnit(entry.id)"
       />
     </div>
+
+    <WeaponDialog
+      v-model="weaponDialog"
+      :weapon="weaponDraft"
+      :is-new="weaponId === null"
+      @save="saveWeapon"
+    />
+    <ArmorDialog
+      v-model="armorDialog"
+      :part="armorPart"
+      :item="armorDraft"
+      :is-new="armorIsNew"
+      @save="saveArmor"
+    />
+    <ItemDialog
+      v-model="itemDialog"
+      :item="itemDraft"
+      :is-new="itemId === null"
+      :carriers="carriers"
+      @save="saveItem"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import ArmorDialog from "@/components/ArmorDialog.vue";
 import DiceRoll from "@/components/DiceRoll.vue";
+import ItemDialog from "@/components/ItemDialog.vue";
 import LoadBar from "@/components/LoadBar.vue";
-import type { RollButton } from "@/model/types";
-import { useCatalogStore } from "@/stores/catalog";
+import WeaponDialog from "@/components/WeaponDialog.vue";
+import { blankArmor, blankItem, blankWeapon } from "@/model/blank";
+import type {
+  ArmorItem,
+  ArmorPart,
+  GearEntry,
+  GearItem,
+  RollButton,
+  Weapon
+} from "@/model/types";
 import { useCharacterStore } from "@/stores/character";
 
-const catalog = useCatalogStore();
 const character = useCharacterStore();
 
 const state = computed(() => character.state);
 
 const parts = ["Kopf", "Körper", "Schild"] as const;
-type Part = (typeof parts)[number];
 
-const partLabel = (part: Part) =>
+const partLabel = (part: ArmorPart) =>
   part === "Schild" ? "Schild" : `Rüstung ${part}`;
 
 const rollById = computed(() => {
@@ -223,27 +275,10 @@ const equippedWeapons = computed(
   () => state.value?.characterGear.weapons.filter(entry => entry.equipped) ?? []
 );
 
-const armorForPart = (part: Part) =>
+const armorForPart = (part: ArmorPart) =>
   state.value?.characterGear.armor.find(
     entry => entry.equipped && entry.data.part === part
   ) ?? null;
-
-const weaponOptions = computed(() =>
-  (catalog.ruleset?.weapons ?? []).map(weapon => ({
-    label: weapon.name,
-    value: weapon.name
-  }))
-);
-const itemOptions = computed(() =>
-  (catalog.ruleset?.items ?? []).map(item => ({
-    label: item.name,
-    value: item.name
-  }))
-);
-const armorOptionsFor = (part: Part) =>
-  (catalog.ruleset?.armor ?? [])
-    .filter(armor => armor.part === part)
-    .map(armor => ({ label: armor.name, value: armor.name }));
 
 interface InventoryRow {
   id: string;
@@ -252,6 +287,7 @@ interface InventoryRow {
   equipped: boolean;
   canEquip: boolean;
   carrier: string;
+  item?: GearItem;
 }
 
 const carriers = computed(() => [
@@ -294,7 +330,8 @@ const inventory = computed<InventoryRow[]>(() => {
       type: "Ausrüstung",
       equipped: entry.equipped,
       canEquip: false,
-      carrier: "character"
+      carrier: "character",
+      item: entry.data
     });
   }
   for (const entry of gear.consumables) {
@@ -310,33 +347,72 @@ const inventory = computed<InventoryRow[]>(() => {
   return rows;
 });
 
-const setCarrier = (id: string, carrier: string) =>
-  character.sendAction("gear.setCarrier", { id, carrier });
-
 const setEquipped = (id: string, equipped: boolean) =>
   character.sendAction("gear.setEquipped", { id, equipped });
 const remove = (id: string) => character.sendAction("gear.remove", { id });
-const clearArmor = (part: Part) =>
+const clearArmor = (part: ArmorPart) =>
   character.sendAction("gear.clearArmor", { part });
+const setCarrier = (id: string, carrier: string) =>
+  character.sendAction("gear.setCarrier", { id, carrier });
 const useConsumable = (id: string) =>
   character.sendAction("consumable.use", { id });
 const addUnit = (id: string) =>
   character.sendAction("consumable.addUnit", { id });
 
-const equipArmor = (part: Part, name: string) => {
-  const armor = (catalog.ruleset?.armor ?? []).find(
-    row => row.name === name && row.part === part
-  );
-  if (armor) character.sendAction("armor.set", { armor });
+// --- Dialoge -------------------------------------------------------------
+
+const weaponDialog = ref(false);
+const weaponDraft = ref<Weapon>(blankWeapon());
+const weaponId = ref<string | null>(null);
+
+const openWeapon = (entry?: GearEntry<Weapon>) => {
+  weaponId.value = entry?.id ?? null;
+  weaponDraft.value = entry ? { ...entry.data } : blankWeapon();
+  weaponDialog.value = true;
 };
-const addWeapon = (name: string) => {
-  const weapon = (catalog.ruleset?.weapons ?? []).find(
-    row => row.name === name
-  );
-  if (weapon) character.sendAction("weapon.add", { weapon });
+
+const saveWeapon = (weapon: Weapon) => {
+  if (weaponId.value) {
+    character.sendAction("weapon.update", { id: weaponId.value, weapon });
+  } else {
+    character.sendAction("weapon.add", { weapon });
+  }
+  weaponDialog.value = false;
 };
-const addItem = (name: string) => {
-  const item = (catalog.ruleset?.items ?? []).find(row => row.name === name);
-  if (item) character.sendAction("item.add", { item });
+
+const armorDialog = ref(false);
+const armorDraft = ref<ArmorItem>(blankArmor("Körper"));
+const armorPart = ref<ArmorPart>("Körper");
+const armorIsNew = ref(true);
+
+const openArmor = (part: ArmorPart, entry?: GearEntry<ArmorItem>) => {
+  armorPart.value = part;
+  armorIsNew.value = !entry;
+  armorDraft.value = entry ? { ...entry.data } : blankArmor(part);
+  armorDialog.value = true;
+};
+
+const saveArmor = (item: ArmorItem) => {
+  character.sendAction("armor.set", { armor: item });
+  armorDialog.value = false;
+};
+
+const itemDialog = ref(false);
+const itemDraft = ref<GearItem>(blankItem());
+const itemId = ref<string | null>(null);
+
+const openItem = (entry?: { id: string; data: GearItem }) => {
+  itemId.value = entry?.id ?? null;
+  itemDraft.value = entry ? { ...entry.data } : blankItem();
+  itemDialog.value = true;
+};
+
+const saveItem = (item: GearItem, carrier: string) => {
+  if (itemId.value) {
+    character.sendAction("item.update", { id: itemId.value, item });
+  } else {
+    character.sendAction("item.add", { item, carrier });
+  }
+  itemDialog.value = false;
 };
 </script>
