@@ -7,13 +7,19 @@
       <q-card-section class="text-subtitle1">{{ title }}</q-card-section>
 
       <q-card-section v-if="kind === 'check'" class="q-pt-none q-gutter-y-xs">
-        <q-input v-if="free" v-model="label" label="Titel" dense outlined />
+        <q-input
+          v-if="free && bridge.connected"
+          v-model="label"
+          label="Titel"
+          dense
+          outlined
+        />
 
         <div class="row items-center no-wrap">
           <div class="col">
             Attribut
             <q-select
-              v-if="free"
+              v-if="free && bridge.connected"
               v-model="attribute"
               :options="attributeOptions"
               dense
@@ -21,7 +27,7 @@
               options-dense
               class="q-mt-xs"
             />
-            <span v-else class="text-caption text-grey-6">
+            <span v-else-if="!free" class="text-caption text-grey-6">
               · {{ attribute }}
             </span>
           </div>
@@ -73,6 +79,7 @@
         </div>
 
         <q-select
+          v-if="showSelectors"
           v-model="weaponId"
           :options="weaponOptions"
           label="Waffe"
@@ -112,6 +119,7 @@
         </div>
 
         <q-select
+          v-if="showSelectors"
           v-model="talentNames"
           :options="talentOptions"
           label="Talent (Artefaktwürfel)"
@@ -517,6 +525,9 @@ const title = computed(() => {
 
 const armorName = (id: string) =>
   armorEntries.value.find(entry => entry.id === id)?.data.name ?? id;
+
+/** Auswahlfelder nur mit App (offline fehlen Regelwerk und Charakter). */
+const showSelectors = computed(() => !free.value || bridge.connected);
 
 const totalDice = computed(
   () =>
