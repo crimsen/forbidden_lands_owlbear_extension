@@ -161,9 +161,12 @@ export interface StateDefinition {
 
 export interface Spell {
   name: string;
-  rank?: number;
-  discipline?: string;
-  description?: string;
+  discipline: string;
+  rank: number;
+  reach: string;
+  duration: string;
+  component: string;
+  effect: string;
 }
 
 /** Stammdaten (Regelwerk) der App, wie über die Bridge empfangen. */
@@ -292,7 +295,8 @@ export interface CharacterView {
     remainingLoad: number;
     magicRanks: Record<string, number>;
     kinTalent: string | null;
-    castableSpells: string[];
+    castableSpells: Spell[];
+    spellDisciplines: string[];
     learnableTalents: string[];
     /** Waffen des Charakters für die Waffenauswahl im Wurf-Dialog. */
     weaponOptions: { id: string; name: string; label: string; dice: number }[];
