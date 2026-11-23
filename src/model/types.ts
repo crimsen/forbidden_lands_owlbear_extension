@@ -305,6 +305,8 @@ export interface CharacterView {
     talentOptions: { name: string; label: string; die: number }[];
     /** Bonus der Traglast durch das Talent Packesel. */
     packeselBonus: number;
+    /** Traglast je Reittier (Last und Kapazität). */
+    mountLoads: { id: string; load: number; capacity: number }[];
   };
   rolls: RollButton[];
 }

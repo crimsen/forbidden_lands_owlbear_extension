@@ -111,6 +111,17 @@
         <div class="text-body2">{{ row.name }}</div>
         <div class="text-caption text-grey-6">{{ row.type }}</div>
       </div>
+      <q-select
+        class="col-auto"
+        style="min-width: 110px"
+        dense
+        borderless
+        :model-value="row.carrier"
+        :options="carriers"
+        emit-value
+        map-options
+        @update:model-value="value => setCarrier(row.id, value)"
+      />
       <q-btn
         v-if="row.canEquip"
         dense
@@ -240,7 +251,16 @@ interface InventoryRow {
   type: string;
   equipped: boolean;
   canEquip: boolean;
+  carrier: string;
 }
+
+const carriers = computed(() => [
+  { label: "Charakter", value: "character" },
+  ...(state.value?.mounts ?? []).map(mount => ({
+    label: mount.name || mount.animalName || "Reittier",
+    value: mount.id
+  }))
+]);
 
 const inventory = computed<InventoryRow[]>(() => {
   const gear = state.value?.characterGear;
@@ -253,7 +273,8 @@ const inventory = computed<InventoryRow[]>(() => {
       name: entry.data.name,
       type: "Waffe",
       equipped: entry.equipped,
-      canEquip: true
+      canEquip: true,
+      carrier: "character"
     });
   }
   for (const entry of gear.armor) {
@@ -262,7 +283,8 @@ const inventory = computed<InventoryRow[]>(() => {
       name: entry.data.name,
       type: entry.data.part === "Schild" ? "Schild" : "Rüstung",
       equipped: entry.equipped,
-      canEquip: true
+      canEquip: true,
+      carrier: "character"
     });
   }
   for (const entry of gear.items) {
@@ -271,7 +293,8 @@ const inventory = computed<InventoryRow[]>(() => {
       name: entry.data.name,
       type: "Ausrüstung",
       equipped: entry.equipped,
-      canEquip: false
+      canEquip: false,
+      carrier: "character"
     });
   }
   for (const entry of gear.consumables) {
@@ -280,11 +303,15 @@ const inventory = computed<InventoryRow[]>(() => {
       name: entry.data.name,
       type: "Verbrauchsgut",
       equipped: entry.equipped,
-      canEquip: false
+      canEquip: false,
+      carrier: "character"
     });
   }
   return rows;
 });
+
+const setCarrier = (id: string, carrier: string) =>
+  character.sendAction("gear.setCarrier", { id, carrier });
 
 const setEquipped = (id: string, equipped: boolean) =>
   character.sendAction("gear.setEquipped", { id, equipped });
