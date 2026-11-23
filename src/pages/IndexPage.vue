@@ -116,6 +116,7 @@
     </q-tab-panels>
 
     <RollDialog />
+    <ResizeHandle />
   </q-page>
 </template>
 
@@ -126,6 +127,7 @@ import GearPanel from "@/components/GearPanel.vue";
 import MountsPanel from "@/components/MountsPanel.vue";
 import NotesPanel from "@/components/NotesPanel.vue";
 import RollDialog from "@/components/RollDialog.vue";
+import ResizeHandle from "@/components/ResizeHandle.vue";
 import SkillsPanel from "@/components/SkillsPanel.vue";
 import TalentsPanel from "@/components/TalentsPanel.vue";
 import ValuesPanel from "@/components/ValuesPanel.vue";
