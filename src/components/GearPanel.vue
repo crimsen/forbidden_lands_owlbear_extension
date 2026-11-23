@@ -20,7 +20,14 @@
       <div class="col">
         <div class="text-body2">{{ entry.data.name }}</div>
         <div class="text-caption text-grey-6">
-          {{ entry.data.bonus }} · Schaden {{ entry.data.damage }}
+          {{ entry.data.bonus }} · Schaden {{ entry.data.damage }} · Gewicht
+          {{ entry.data.weight }}
+        </div>
+        <div v-if="entry.data.properties" class="text-caption text-grey-6">
+          {{ entry.data.properties }}
+        </div>
+        <div v-if="entry.data.notes" class="text-caption text-grey-6">
+          {{ entry.data.notes }}
         </div>
       </div>
       <DiceRoll
@@ -76,11 +83,28 @@
           @click="openArmor(part)"
         />
       </div>
-      <div v-if="armorForPart(part)" class="row items-center no-wrap">
-        <div class="col text-body2">
-          {{ armorForPart(part)?.data.name }} ({{
-            armorForPart(part)?.data.rating
-          }})
+      <div v-if="armorForPart(part)" class="row items-start no-wrap">
+        <div class="col">
+          <div class="text-body2">
+            {{ armorForPart(part)?.data.name }} ({{
+              armorForPart(part)?.data.rating
+            }})
+          </div>
+          <div class="text-caption text-grey-6">
+            Gewicht {{ armorForPart(part)?.data.weight }}
+          </div>
+          <div
+            v-if="armorForPart(part)?.data.properties"
+            class="text-caption text-grey-6"
+          >
+            {{ armorForPart(part)?.data.properties }}
+          </div>
+          <div
+            v-if="armorForPart(part)?.data.notes"
+            class="text-caption text-grey-6"
+          >
+            {{ armorForPart(part)?.data.notes }}
+          </div>
         </div>
         <q-btn
           dense
@@ -131,7 +155,12 @@
     >
       <div class="col">
         <div class="text-body2">{{ row.name }}</div>
-        <div class="text-caption text-grey-6">{{ row.type }}</div>
+        <div class="text-caption text-grey-6">
+          {{ row.type }} · Gewicht {{ row.weight }}
+        </div>
+        <div v-if="row.detail" class="text-caption text-grey-6">
+          {{ row.detail }}
+        </div>
       </div>
       <q-select
         class="col-auto"
@@ -284,6 +313,8 @@ interface InventoryRow {
   id: string;
   name: string;
   type: string;
+  weight: string;
+  detail: string;
   equipped: boolean;
   canEquip: boolean;
   carrier: string;
@@ -308,6 +339,8 @@ const inventory = computed<InventoryRow[]>(() => {
       id: entry.id,
       name: entry.data.name,
       type: "Waffe",
+      weight: entry.data.weight,
+      detail: entry.data.notes,
       equipped: entry.equipped,
       canEquip: true,
       carrier: "character"
@@ -318,6 +351,8 @@ const inventory = computed<InventoryRow[]>(() => {
       id: entry.id,
       name: entry.data.name,
       type: entry.data.part === "Schild" ? "Schild" : "Rüstung",
+      weight: entry.data.weight,
+      detail: entry.data.notes,
       equipped: entry.equipped,
       canEquip: true,
       carrier: "character"
@@ -328,6 +363,8 @@ const inventory = computed<InventoryRow[]>(() => {
       id: entry.id,
       name: entry.data.name,
       type: "Ausrüstung",
+      weight: entry.data.weight,
+      detail: entry.data.description,
       equipped: entry.equipped,
       canEquip: false,
       carrier: "character",
@@ -339,6 +376,9 @@ const inventory = computed<InventoryRow[]>(() => {
       id: entry.id,
       name: entry.data.name,
       type: "Verbrauchsgut",
+      weight: "–",
+      detail:
+        entry.data.die !== null ? `Würfel ${entry.data.die}` : "aufgebraucht",
       equipped: entry.equipped,
       canEquip: false,
       carrier: "character"

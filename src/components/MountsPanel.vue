@@ -68,7 +68,13 @@
           :key="row.id"
           class="row items-center no-wrap q-py-xs"
         >
-          <div class="col text-body2">{{ row.name }}</div>
+          <div class="col">
+            <div class="text-body2">{{ row.name }}</div>
+            <div class="text-caption text-grey-6">
+              Gewicht {{ row.weight }}
+              <span v-if="row.detail"> · {{ row.detail }}</span>
+            </div>
+          </div>
           <q-select
             class="col-auto"
             style="min-width: 110px"
@@ -146,22 +152,45 @@ const carriers = computed(() => [
 interface GearRow {
   id: string;
   name: string;
+  weight: string;
+  detail: string;
 }
 
 const gearRows = (mount: MountState): GearRow[] => {
   const rows: GearRow[] = [];
   for (const entry of mount.gear.weapons) {
     if (entry.data.name === "Unbewaffnet") continue;
-    rows.push({ id: entry.id, name: entry.data.name });
+    rows.push({
+      id: entry.id,
+      name: entry.data.name,
+      weight: entry.data.weight,
+      detail: entry.data.notes
+    });
   }
   for (const entry of mount.gear.armor) {
-    rows.push({ id: entry.id, name: entry.data.name });
+    rows.push({
+      id: entry.id,
+      name: entry.data.name,
+      weight: entry.data.weight,
+      detail: entry.data.notes
+    });
   }
   for (const entry of mount.gear.items) {
-    rows.push({ id: entry.id, name: entry.data.name });
+    rows.push({
+      id: entry.id,
+      name: entry.data.name,
+      weight: entry.data.weight,
+      detail: entry.data.description
+    });
   }
   for (const entry of mount.gear.consumables) {
-    rows.push({ id: entry.id, name: entry.data.name });
+    rows.push({
+      id: entry.id,
+      name: entry.data.name,
+      weight: "–",
+      detail:
+        entry.data.die !== null ? `Würfel ${entry.data.die}` : "aufgebraucht"
+    });
   }
   return rows;
 };
