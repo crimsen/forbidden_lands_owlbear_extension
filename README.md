@@ -7,9 +7,8 @@ und leitet Würfe über Owlbears `OBR.broadcast`-API an die **Dice+**-Extension
 weiter.
 
 Die Extension-Manifest-Datei liegt in `public/manifest.json` (Popover `/`,
-400×600). Der Wire-Format-Ablauf ist im Hauptrepo in
-`erklaerungen/owlbear-bridge.md` dokumentiert — eine Protokolländerung betrifft
-immer beide Repos.
+400×600). Das Wire-Format ist zwischen App und Extension abgestimmt — eine
+Protokolländerung betrifft immer beide Repos.
 
 ## Voraussetzungen
 

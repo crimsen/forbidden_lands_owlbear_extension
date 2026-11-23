@@ -2,7 +2,7 @@
   "name": "forbidden-lands-owlbear-extension",
   "version": "1.1.0",
   "private": true,
-  "description": "A Quasar Project",
+  "description": "Owlbear-Rodeo-Extension für Verbotene Lande",
   "keywords": [
     "quasar",
     "quasar-app",
@@ -47,5 +47,5 @@
   "engines": {
     "node": ">= 26 || ^24 || ^22.12"
   },
-  "productName": "Verbotone Lande"
+  "productName": "Verbotene Lande"
 }
