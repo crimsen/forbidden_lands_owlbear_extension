@@ -1,6 +1,6 @@
 {
   "name": "forbidden-lands-owlbear-extension",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
   "description": "A Quasar Project",
   "keywords": [
@@ -12,8 +12,8 @@
     "vue",
     "vuejs"
   ],
-  "author": "Tim Gröger <tim@groeger-clan.de>",
   "license": "MIT",
+  "author": "Tim Gröger <tim@groeger-clan.de>",
   "type": "module",
   "scripts": {
     "lint": "oxfmt && oxlint --fix",
