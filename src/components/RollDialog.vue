@@ -207,16 +207,35 @@
         </div>
       </q-card-section>
 
-      <q-card-section v-if="bridge.rollPending" class="text-center">
+      <q-card-section
+        v-if="bridge.rollPending || localPending"
+        class="text-center"
+      >
         <q-spinner color="primary" size="2em" />
-        <div class="text-caption q-mt-xs">Die App wertet aus …</div>
+        <div class="text-caption q-mt-xs">
+          {{ bridge.rollPending ? "Die App wertet aus …" : "Dice+ würfelt …" }}
+        </div>
       </q-card-section>
 
       <q-card-section
-        v-else-if="bridge.rollError"
+        v-else-if="bridge.rollError || localError"
         class="text-caption text-negative"
       >
-        {{ bridge.rollError }}
+        {{ bridge.rollError || localError }}
+      </q-card-section>
+
+      <q-card-section v-else-if="localResult" class="q-pt-none">
+        <div
+          v-for="(group, index) in localResult.groups"
+          :key="index"
+          class="text-body2"
+        >
+          <span class="text-grey-6">{{ group.description }}:</span>
+          {{ group.dice.join(", ") }}
+        </div>
+        <div class="text-subtitle2 q-mt-xs">
+          Summe: {{ localResult.totalValue }}
+        </div>
       </q-card-section>
 
       <q-card-section v-else-if="evaluation" class="q-pt-none">
@@ -393,6 +412,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import type { RollParams } from "@/model/types";
+import { EVENT_ROLL, rollNotation } from "@/model/roll";
+import { rollTargetOf, rollWithDicePlus } from "@/services/dicePlus";
 import { useBridgeStore } from "@/stores/bridge";
 import { useCatalogStore } from "@/stores/catalog";
 import { useCharacterStore } from "@/stores/character";
@@ -424,7 +445,20 @@ const degradationApplied = ref(false);
 const overrides = ref<Record<string, number>>({});
 const destroyedIds = ref<string[]>([]);
 const confirmingDestroy = ref(false);
+const localPending = ref(false);
+const localError = ref("");
+const localResult = ref<LocalResult | null>(null);
 let requestId = "";
+
+interface LocalGroup {
+  description: string;
+  dice: number[];
+  total: number;
+}
+interface LocalResult {
+  groups: LocalGroup[];
+  totalValue: number;
+}
 
 const evaluation = computed(() => bridge.evaluation);
 
@@ -496,14 +530,20 @@ const totalDice = computed(
 );
 
 const canRoll = computed(() => {
-  if (!bridge.connected || bridge.rollPending) return false;
+  if (!bridge.dicePlusReady || bridge.rollPending || localPending.value) {
+    return false;
+  }
+  if (kind.value === "event") return true;
   if (kind.value === "check") {
     if (totalDice.value <= 0) return false;
-    // Nach dem Wurf nur noch über Strapazieren; im freien Wurf beliebig oft.
-    return free.value || !evaluation.value;
+    // Freier Wurf: nur Dice+ nötig; sonst App und nach dem Wurf nur Strapazieren.
+    if (free.value) return true;
+    return bridge.connected && !evaluation.value;
   }
-  if (kind.value === "armor") return armorIds.value.length > 0;
-  return true;
+  if (kind.value === "armor") {
+    return bridge.connected && armorIds.value.length > 0;
+  }
+  return bridge.connected;
 });
 
 // Bonuswürfel der gewählten Waffe automatisch übernehmen.
@@ -530,11 +570,16 @@ watch(
     const params = dialog.roll.params;
     kind.value = params.kind;
     bridge.resetRoll();
+    localResult.value = null;
+    localError.value = "";
+    localPending.value = false;
     requestId = crypto.randomUUID();
     if (params.kind === "check") {
       free.value = params.free === true;
       label.value = params.label;
-      attribute.value = params.attribute;
+      attribute.value =
+        params.attribute ||
+        (free.value ? (catalog.ruleset?.attributes[0] ?? "") : "");
       skillName.value = params.skill;
       attributeDice.value = params.attributeDice;
       skillDice.value = params.skillDice ?? 0;
@@ -595,8 +640,74 @@ const buildParams = (): RollParams => {
 const submit = () => {
   if (!canRoll.value) return;
   resetArmor();
+  localResult.value = null;
+  localError.value = "";
+  // Freier/ereignis ohne App: lokal würfeln (App sonst wertet aus).
+  if ((kind.value === "event" || free.value) && !bridge.connected) {
+    void localRoll();
+    return;
+  }
   const params = buildParams();
   bridge.requestRoll(requestId, params.kind, params);
+};
+
+/** Notation des freien Wurfs aus den Dialogwerten. */
+const freeNotation = () =>
+  rollNotation({
+    attributeDice: attributeDice.value,
+    attribute: attribute.value,
+    skillDice: skillDice.value,
+    skill: skillName.value,
+    weaponDice: weaponDice.value,
+    weapon: selectedWeapon.value?.name,
+    artifacts: ARTIFACT_DICE.map(sides => ({
+      sides,
+      dice: artifactDice.value[sides] ?? 0
+    }))
+  });
+
+const extractDice = (payload: Record<string, unknown>): LocalResult => {
+  const outer = payload.result as
+    | {
+        result?: {
+          totalValue?: number;
+          groups?: {
+            description?: string;
+            dice?: { value?: number }[];
+            total?: number;
+          }[];
+        };
+      }
+    | undefined;
+  const inner = outer?.result;
+  return {
+    totalValue: inner?.totalValue ?? 0,
+    groups: (inner?.groups ?? []).map(group => ({
+      description: group.description ?? "Würfel",
+      dice: (group.dice ?? []).map(die => die.value ?? 0),
+      total: group.total ?? 0
+    }))
+  };
+};
+
+/** Würfelt ohne App direkt über Dice+ und zeigt die rohen Würfel. */
+const localRoll = async () => {
+  localPending.value = true;
+  localResult.value = null;
+  localError.value = "";
+  try {
+    const notation =
+      kind.value === "event" ? EVENT_ROLL.notation : freeNotation();
+    const payload = await rollWithDicePlus(
+      notation,
+      rollTargetOf(bridge.rollTarget)
+    );
+    localResult.value = extractDice(payload);
+  } catch (error) {
+    localError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    localPending.value = false;
+  }
 };
 
 const push = () => bridge.pushRoll(requestId);
@@ -676,5 +787,8 @@ const keepDestroyed = () => {
 const close = () => {
   dialog.open = false;
   bridge.resetRoll();
+  localResult.value = null;
+  localError.value = "";
+  localPending.value = false;
 };
 </script>

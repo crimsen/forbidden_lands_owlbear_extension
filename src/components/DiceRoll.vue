@@ -6,7 +6,7 @@
     size="sm"
     icon="mdi-dice-multiple"
     :label="roll.label"
-    :disable="!bridge.connected || !bridge.dicePlusReady"
+    :disable="disabled"
     @click="dialog.show(roll)"
   >
     <q-tooltip>{{ tooltip }}</q-tooltip>
@@ -23,9 +23,18 @@ const props = defineProps<{ roll: RollButton }>();
 const bridge = useBridgeStore();
 const dialog = useRollDialogStore();
 
+/** Freier und Ereigniswurf laufen notfalls ohne App (nur Dice+ nötig). */
+const needsApp = computed(
+  () => props.roll.group !== "free" && props.roll.group !== "event"
+);
+
+const disabled = computed(
+  () => !bridge.dicePlusReady || (needsApp.value && !bridge.connected)
+);
+
 const tooltip = computed(() => {
-  if (!bridge.connected) return "App nicht verbunden";
   if (!bridge.dicePlusReady) return "Dice+ ist nicht verfügbar";
+  if (needsApp.value && !bridge.connected) return "App nicht verbunden";
   return props.roll.notation || props.roll.label;
 });
 </script>

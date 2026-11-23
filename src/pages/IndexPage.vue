@@ -16,8 +16,8 @@
           :aria-label="ui.editing ? 'Fertig' : 'Bearbeiten'"
           @click="ui.toggleEditing()"
         />
-        <DiceRoll v-if="freeRoll" :roll="freeRoll" />
-        <DiceRoll v-if="eventRoll" :roll="eventRoll" />
+        <DiceRoll :roll="FREE_ROLL" />
+        <DiceRoll :roll="EVENT_ROLL_BUTTON" />
       </div>
       <div class="row items-center q-gutter-xs q-mt-xs">
         <q-chip
@@ -121,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import DiceRoll from "@/components/DiceRoll.vue";
 import GearPanel from "@/components/GearPanel.vue";
 import MountsPanel from "@/components/MountsPanel.vue";
@@ -134,6 +134,7 @@ import ValuesPanel from "@/components/ValuesPanel.vue";
 import { useBridgeStore } from "@/stores/bridge";
 import { useCharacterStore } from "@/stores/character";
 import { useUiStore } from "@/stores/ui";
+import { EVENT_ROLL_BUTTON, FREE_ROLL } from "@/model/roll";
 
 const bridge = useBridgeStore();
 const character = useCharacterStore();
@@ -148,14 +149,6 @@ const rollTargets = [
   { label: "GM und ich", value: "dm" },
   { label: "Nur GM", value: "gm_only" }
 ];
-
-const eventRoll = computed(() =>
-  character.rolls.find(roll => roll.group === "event")
-);
-
-const freeRoll = computed(() =>
-  character.rolls.find(roll => roll.group === "free")
-);
 
 const pair = () => bridge.setPairingCode(pairingInput.value);
 </script>
