@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import type {
   CharacterView,
   RollEvaluation,
@@ -17,11 +17,16 @@ import {
   type BridgeConnection,
   type BridgeMessage
 } from "@/services/bridge";
+import { obrState } from "@/services/obr";
 import { useCatalogStore } from "@/stores/catalog";
 import { useCharacterStore } from "@/stores/character";
 
 /** Kopplungscode liegt lokal in der Extension, nicht im Quellcode. */
 const PAIRING_KEY = "forbidden-lands-pairing";
+
+/** Dice+ zyklisch prüfen: schneller, solange es fehlt. */
+const DICE_RETRY_MS = 3000;
+const DICE_IDLE_MS = 15000;
 
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -105,6 +110,20 @@ export const useBridgeStore = defineStore("bridge", () => {
     }
   };
 
+  let diceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Prüft Dice+ zyklisch, solange Owlbear bereit ist (schneller, wenn es fehlt). */
+  const scheduleDiceCheck = () => {
+    if (diceTimer) clearTimeout(diceTimer);
+    diceTimer = setTimeout(
+      async () => {
+        if (obrState.value === "ready") await refreshDicePlus();
+        scheduleDiceCheck();
+      },
+      dicePlusReady.value ? DICE_IDLE_MS : DICE_RETRY_MS
+    );
+  };
+
   const connect = () => {
     connection?.close();
     connection = null;
@@ -175,6 +194,11 @@ export const useBridgeStore = defineStore("bridge", () => {
   const init = () => {
     connect();
     void refreshDicePlus();
+    scheduleDiceCheck();
+    // Sobald Owlbear bereit ist, Dice+ sofort erneut prüfen.
+    watch(obrState, value => {
+      if (value === "ready") void refreshDicePlus();
+    });
   };
 
   return {

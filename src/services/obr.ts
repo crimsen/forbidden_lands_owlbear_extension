@@ -4,6 +4,8 @@ import { computed, ref } from "vue";
 export type ObrState = "unavailable" | "connecting" | "ready" | "timeout";
 
 const READY_TIMEOUT_MS = 5000;
+/** Wiederholte Prüfung, bis Owlbear bereit ist (Handshake kann verpasst werden). */
+const READY_RETRY_MS = 2000;
 
 const available = Boolean(OBR.isAvailable);
 const obrrefOrigin = readObrrefOrigin();
@@ -14,32 +16,30 @@ const rawHandshakeOrigin = ref<string | null>(null);
 const rawHandshakeAt = ref<number | null>(null);
 
 let timer: ReturnType<typeof setTimeout> | undefined;
+let retry: ReturnType<typeof setInterval> | undefined;
+
+const stopRetry = () => {
+  if (retry) clearInterval(retry);
+  retry = undefined;
+};
 
 const markReady = () => {
   ready.value = true;
   readyAt.value = Date.now();
   timedOut.value = false;
   if (timer) clearTimeout(timer);
+  stopRetry();
 };
-
-if (available) {
-  if (OBR.isReady) markReady();
-  else {
-    OBR.onReady(markReady);
-    timer = setTimeout(() => {
-      if (!ready.value) timedOut.value = true;
-    }, READY_TIMEOUT_MS);
-  }
-}
 
 // Der Parent schickt OBR_READY oft, bevor der SDK-Listener existiert. Das
 // Early-Script in public/ fängt ihn ab; hier wird er nachgespielt.
-const captured = window.__obrHandshake;
-if (captured) {
+const replayCapturedHandshake = () => {
+  const captured = window.__obrHandshake;
+  if (!captured) return;
   rawHandshakeOrigin.value = captured.origin;
   rawHandshakeAt.value = captured.at;
   const originMatches = !obrrefOrigin || captured.origin === obrrefOrigin;
-  if (available && !OBR.isReady && originMatches) {
+  if (originMatches) {
     window.dispatchEvent(
       new MessageEvent("message", {
         data: captured.data,
@@ -47,11 +47,32 @@ if (captured) {
         source: window.parent
       })
     );
-  } else if (import.meta.env.DEV && !originMatches) {
+  } else if (import.meta.env.DEV) {
     console.warn("[obr] OBR_READY origin mismatch", {
       expected: obrrefOrigin,
       actual: captured.origin
     });
+  }
+};
+
+if (available) {
+  if (OBR.isReady) {
+    markReady();
+  } else {
+    OBR.onReady(markReady);
+    timer = setTimeout(() => {
+      if (!ready.value) timedOut.value = true;
+    }, READY_TIMEOUT_MS);
+    // Immer wieder prüfen, bis Owlbear bereit ist.
+    replayCapturedHandshake();
+    retry = setInterval(() => {
+      if (ready.value) {
+        stopRetry();
+        return;
+      }
+      replayCapturedHandshake();
+      if (OBR.isReady) markReady();
+    }, READY_RETRY_MS);
   }
 }
 
