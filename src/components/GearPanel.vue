@@ -44,7 +44,10 @@
       @update:model-value="addWeapon"
     />
 
-    <div class="text-subtitle2 q-mt-md">Rüstung</div>
+    <div class="row items-center no-wrap q-mt-md">
+      <div class="col text-subtitle2">Rüstung</div>
+      <DiceRoll v-if="armorRoll" :roll="armorRoll" />
+    </div>
     <div
       v-for="entry in state.characterGear.armor"
       :key="entry.id"
@@ -166,6 +169,10 @@ const catalog = useCatalogStore();
 const character = useCharacterStore();
 
 const state = computed(() => character.state);
+
+const armorRoll = computed(() =>
+  character.rolls.find(roll => roll.group === "armor")
+);
 
 const rollById = computed(() => {
   const map: Record<string, RollButton | undefined> = {};
