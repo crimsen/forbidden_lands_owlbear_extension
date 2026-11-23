@@ -213,11 +213,14 @@
             </span>
           </div>
           <div
-            v-if="evaluation.pushCount > 0 && evaluation.failures > 0"
+            v-if="evaluation.appliedFailures > 0"
             class="text-caption text-grey-6"
           >
             Attributschaden bereits verrechnet:
-            {{ evaluation.failures }} Schaden · +{{ evaluation.failures }} WP
+            {{ evaluation.appliedFailures }} Schaden · +{{
+              evaluation.appliedFailures
+            }}
+            WP
           </div>
           <div v-if="evaluation.canPush" class="q-mt-sm">
             <div
@@ -245,19 +248,74 @@
         </template>
 
         <template v-else-if="evaluation.kind === 'armor'">
-          <div class="text-h5 text-primary">
-            {{ evaluation.absorbed }} absorbiert
+          <div class="text-subtitle2">
+            Rüstung: {{ evaluation.absorbed }} Schaden verhindert
           </div>
-          <div class="text-caption text-grey-6">
-            {{ evaluation.damage }} Schaden auf Stärke
+
+          <div class="text-body2 q-mt-sm">
+            Schaden auf Stärke: {{ evaluation.damage }}
           </div>
-          <div v-if="evaluation.degraded.length" class="text-caption q-mt-xs">
-            Abnutzung:
-            {{
-              evaluation.degraded
-                .map(row => `${armorName(row.id)} −${row.amount}`)
-                .join(", ")
-            }}
+          <div v-if="damageApplied" class="text-caption text-positive">
+            Stärkeschaden angerechnet.
+          </div>
+          <q-btn
+            v-else
+            outline
+            color="primary"
+            class="q-mt-sm"
+            label="Stärkeschaden anwenden"
+            :disable="evaluation.damage === 0"
+            @click="applyArmorDamage"
+          />
+
+          <div class="q-mt-md">
+            <div
+              v-if="evaluation.damage === 0"
+              class="text-caption text-grey-6"
+            >
+              Rüstung hat alles abgefangen – keine Abnutzung.
+            </div>
+            <template v-else>
+              <div class="text-subtitle2">Abnutzung (Einsen)</div>
+              <div
+                v-for="row in degradationRows"
+                :key="row.id"
+                class="row items-center no-wrap"
+              >
+                <div class="col text-body2">{{ row.name }}</div>
+                <q-btn
+                  dense
+                  flat
+                  round
+                  size="sm"
+                  icon="mdi-minus"
+                  :disable="degradationApplied || row.value <= 0"
+                  @click="setDegradation(row.id, row.value - 1)"
+                />
+                <div class="text-body2 q-px-sm">{{ row.value }}</div>
+                <q-btn
+                  dense
+                  flat
+                  round
+                  size="sm"
+                  icon="mdi-plus"
+                  :disable="degradationApplied || row.value >= row.max"
+                  @click="setDegradation(row.id, row.value + 1)"
+                />
+              </div>
+              <div v-if="degradationApplied" class="text-caption text-positive">
+                Abnutzung angerechnet.
+              </div>
+              <q-btn
+                v-else
+                outline
+                color="primary"
+                class="q-mt-sm"
+                label="Abnutzung übernehmen"
+                :disable="!hasDegradation"
+                @click="applyDegradation"
+              />
+            </template>
           </div>
         </template>
 
@@ -285,6 +343,19 @@
           :disable="!canRoll"
           @click="submit"
         />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="confirmingDestroy">
+    <q-card style="min-width: 300px">
+      <q-card-section class="text-subtitle1">Rüstung zerstört?</q-card-section>
+      <q-card-section class="q-pt-none text-body2">
+        {{ destroyedNames }} steht bei 0 – aus dem Inventar entfernen?
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn flat label="Behalten (0)" @click="keepDestroyed" />
+        <q-btn color="negative" label="Entfernen" @click="removeDestroyed" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -319,6 +390,11 @@ const artifactDice = ref<Record<number, number>>({ 8: 0, 10: 0, 12: 0 });
 const armorIds = ref<string[]>([]);
 const damage = ref(0);
 const consumableRefId = ref("");
+const damageApplied = ref(false);
+const degradationApplied = ref(false);
+const overrides = ref<Record<string, number>>({});
+const destroyedIds = ref<string[]>([]);
+const confirmingDestroy = ref(false);
 let requestId = "";
 
 const evaluation = computed(() => bridge.evaluation);
@@ -433,6 +509,7 @@ watch(
     } else if (params.kind === "armor") {
       armorIds.value = [...params.armorIds];
       damage.value = params.damage ?? 0;
+      resetArmor();
     } else if (params.kind === "consumable") {
       consumableRefId.value = params.refId;
     }
@@ -475,11 +552,84 @@ const buildParams = (): RollParams => {
 
 const submit = () => {
   if (!canRoll.value) return;
+  resetArmor();
   const params = buildParams();
   bridge.requestRoll(requestId, params.kind, params);
 };
 
 const push = () => bridge.pushRoll(requestId);
+
+// --- Rüstungsfolgen bestätigen (wie in der App) --------------------------
+
+const degradationRows = computed(() => {
+  const current = evaluation.value;
+  if (current?.kind !== "armor") return [];
+  return current.degradation.map(row => ({
+    id: row.id,
+    name: row.name,
+    max: row.max,
+    value: overrides.value[row.id] ?? row.value
+  }));
+});
+
+const hasDegradation = computed(() =>
+  degradationRows.value.some(row => row.value > 0)
+);
+
+const destroyedNames = computed(() =>
+  destroyedIds.value.map(id => armorName(id)).join(", ")
+);
+
+const resetArmor = () => {
+  damageApplied.value = false;
+  degradationApplied.value = false;
+  overrides.value = {};
+  destroyedIds.value = [];
+  confirmingDestroy.value = false;
+};
+
+const setDegradation = (id: string, value: number) => {
+  overrides.value = { ...overrides.value, [id]: Math.max(0, value) };
+};
+
+const applyArmorDamage = () => {
+  bridge.applyRoll(requestId, "armor-damage");
+  damageApplied.value = true;
+};
+
+const applyDegradation = () => {
+  const rows = degradationRows.value.map(row => ({
+    id: row.id,
+    value: row.value
+  }));
+  bridge.applyRoll(requestId, "armor-degradation", { rows });
+  degradationApplied.value = true;
+  const zero = degradationRows.value.filter(
+    row => row.max > 0 && row.value >= row.max
+  );
+  if (zero.length > 0) {
+    destroyedIds.value = zero.map(row => row.id);
+    confirmingDestroy.value = true;
+  }
+};
+
+const removeDestroyed = () => {
+  bridge.applyRoll(requestId, "armor-destroy", {
+    ids: destroyedIds.value,
+    remove: true
+  });
+  destroyedIds.value = [];
+  confirmingDestroy.value = false;
+};
+
+const keepDestroyed = () => {
+  bridge.applyRoll(requestId, "armor-destroy", {
+    ids: destroyedIds.value,
+    remove: false
+  });
+  destroyedIds.value = [];
+  confirmingDestroy.value = false;
+};
 
 const close = () => {
   dialog.open = false;

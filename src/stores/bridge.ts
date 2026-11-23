@@ -150,6 +150,20 @@ export const useBridgeStore = defineStore("bridge", () => {
     send({ type: "roll-push", requestId });
   };
 
+  /** Bestätigte Rüstungsfolge (Schaden, Abnutzung, Zerstörung) anwenden. */
+  const applyRoll = (
+    requestId: string,
+    apply: string,
+    payload?: Record<string, unknown>
+  ) => {
+    send({
+      type: "roll-apply",
+      requestId,
+      apply,
+      ...(payload ? { payload } : {})
+    });
+  };
+
   /** Setzt den Wurf-Zustand zurück (beim Öffnen des Dialogs). */
   const resetRoll = () => {
     evaluationRequestId = "";
@@ -177,6 +191,7 @@ export const useBridgeStore = defineStore("bridge", () => {
     refreshDicePlus,
     requestRoll,
     pushRoll,
+    applyRoll,
     resetRoll
   };
 });

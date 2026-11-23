@@ -239,10 +239,20 @@ export interface CheckEvaluation {
   label: string;
   successes: number;
   failures: number;
+  /** Bereits angerechnete 1en aus einem früheren Strapazieren. */
+  appliedFailures: number;
   groups: CheckGroup[];
   canPush: boolean;
   pushLabel: string;
   pushCount: number;
+}
+
+/** Eine Abnutzungszeile des Rüstungswurfs. */
+export interface DegradationRow {
+  id: string;
+  name: string;
+  value: number;
+  max: number;
 }
 
 export interface ArmorEvaluation {
@@ -250,7 +260,7 @@ export interface ArmorEvaluation {
   label: string;
   absorbed: number;
   damage: number;
-  degraded: { id: string; amount: number }[];
+  degradation: DegradationRow[];
   destroyed: string[];
 }
 
