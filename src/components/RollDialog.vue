@@ -167,23 +167,44 @@
         v-else-if="kind === 'armor'"
         class="q-pt-none q-gutter-y-xs"
       >
-        <div class="text-caption text-grey-6">Rüstungsteile</div>
-        <q-checkbox
-          v-for="entry in armorEntries"
-          :key="entry.id"
-          dense
-          :model-value="armorIds.includes(entry.id)"
-          :label="`${entry.data.name} (${entry.data.rating})`"
-          @update:model-value="value => toggleArmor(entry.id, value)"
-        />
+        <div v-if="armorEntries.length === 0" class="text-grey-6">
+          Keine Rüstung angelegt.
+        </div>
+        <div v-else class="text-caption text-grey-6">Rüstungsteile</div>
+        <div class="column">
+          <q-toggle
+            v-for="entry in armorEntries"
+            :key="entry.id"
+            :model-value="armorIds.includes(entry.id)"
+            :label="armorLabel(entry)"
+            :disable="entry.data.rating <= 0"
+            color="primary"
+            dense
+            @update:model-value="value => toggleArmor(entry.id, value)"
+          />
+        </div>
         <q-input
           v-model.number="damage"
           type="number"
+          min="0"
+          label="Erlittener Schaden"
           dense
           outlined
-          label="Schaden"
           class="q-mt-sm"
         />
+        <q-select
+          v-model="bridge.rollTarget"
+          :options="rollTargets"
+          label="Wurf sichtbar für"
+          dense
+          outlined
+          emit-value
+          map-options
+          options-dense
+        />
+        <div class="text-caption text-grey-6">
+          {{ armorTotalDice }} W6 (Summe der Rüstungswerte)
+        </div>
       </q-card-section>
 
       <q-card-section v-if="bridge.rollPending" class="text-center">
@@ -250,6 +271,14 @@
         <template v-else-if="evaluation.kind === 'armor'">
           <div class="text-subtitle2">
             Rüstung: {{ evaluation.absorbed }} Schaden verhindert
+          </div>
+          <div
+            v-for="(group, index) in evaluation.groups"
+            :key="index"
+            class="text-body2"
+          >
+            <span class="text-grey-6">{{ group.description }}:</span>
+            {{ group.dice.join(", ") }}
           </div>
 
           <div class="text-body2 q-mt-sm">
@@ -420,6 +449,19 @@ const talentOptions = computed(() =>
   }))
 );
 const armorEntries = computed(() => character.state?.characterGear.armor ?? []);
+
+const armorLabel = (entry: {
+  data: { name: string; part: string; rating: number };
+}) =>
+  entry.data.part === "Schild"
+    ? `${entry.data.name} (+${entry.data.rating})`
+    : `${entry.data.name} (${entry.data.rating})`;
+
+const armorTotalDice = computed(() =>
+  armorEntries.value
+    .filter(entry => armorIds.value.includes(entry.id))
+    .reduce((sum, entry) => sum + entry.data.rating, 0)
+);
 
 const rollTargets = [
   { label: "Alle", value: "everyone" },
